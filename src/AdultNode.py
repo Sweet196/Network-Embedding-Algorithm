@@ -1,4 +1,5 @@
 import math
+import numpy as np
 # 定义一个节点类 Node，有横坐标和纵坐标两个属性，以及一个 label (0/1)
 # index 为节点的编号，从 0 开始， 全局变量
 class Node:
@@ -69,6 +70,21 @@ class Graph:
         return g
     
 
-# 计算两个节点之间的欧式距离
 def distance(node1, node2):
-    return math.sqrt((node1.x - node2.x)**2 + (node1.y - node2.y)**2)
+    """
+    Calculate the Euclidean distance between two nodes
+    
+    Parameters:
+    - node1: The first node
+    - node2: The second node
+    
+    Returns:
+    - Euclidean distance
+    """
+    df1 = node1.df
+    df2 = node2.df
+
+    # Use numpy to calculate the Euclidean distance
+    euclidean_distance = np.linalg.norm(df1 - df2)
+
+    return euclidean_distance
