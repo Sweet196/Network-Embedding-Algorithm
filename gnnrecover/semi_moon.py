@@ -22,7 +22,7 @@ torch.manual_seed(0)
 
 n = 5000
 m = 500
-x, n = moon(n)
+x, n = moon(n) #x是一个5000*2的矩阵，对应坐标(x, y)
 n_train = int(n * 0.7)
 train_ind = torch.randperm(n)[:n_train]
 test_ind = torch.LongTensor(list(set(np.arange(n)) - set(train_ind.tolist())))
