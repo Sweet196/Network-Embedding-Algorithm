@@ -51,7 +51,7 @@ X = torch.tensor([[K, n] for i in range(n)], dtype=torch.float)
 net = Net()
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for i in range(100):
+for i in range(10):
     # Note 1: In the original formulation, $g$, i.e., the neural network for the scale function, should be used in reconstruct(K, pr, n, m, fr, to), namely, in the definition of $s$. We factorize $s$ and multiply g after we reconstruct the features. This is mathematically equivalent. We do this to avoid memory overflow due to long backpropagation.
     # Note 2: We roughly standardize n for stability by (n - 3000) / 3000. This does not affect the representational power of GNNs by merging them into the network parameters.
     pr = stationary(A)
@@ -76,7 +76,7 @@ loss_proposed = float(dG(torch.FloatTensor(x), rec))
 net = GIN(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for epoch in range(100):
+for epoch in range(10):
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     X_extended = torch.hstack([X, ind])
     data = Data(x=X_extended, edge_index=edge_index)
@@ -94,7 +94,7 @@ loss_GIN = float(dG(torch.FloatTensor(x), rec))
 net = GAT(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for epoch in range(100):
+for epoch in range(10):
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     X_extended = torch.hstack([X, ind])
     data = Data(x=X_extended, edge_index=edge_index)
@@ -173,5 +173,4 @@ if not os.path.exists('imgs'):
     os.mkdir('imgs')
 
 fig.savefig('imgs/semi_adult.png', bbox_inches='tight', dpi=300)
-fig.savefig('imgs/semi_adult.pdf', bbox_inches='tight', dpi=300)
-fig.savefig('imgs/semi_adult.svg', bbox_inches='tight', dpi=300)
+

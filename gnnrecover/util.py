@@ -8,6 +8,10 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch_geometric.nn import GINConv, GATConv
 
+import gensim
+import random
+
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -61,6 +65,7 @@ class GIN(torch.nn.Module):
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
+        print("输入形状:", x.shape, edge_index.shape)
         x = self.conv1(x, edge_index)
         x = F.leaky_relu(x)
         x = F.dropout(x, training=self.training)
@@ -167,3 +172,27 @@ def dG(A, B):
     R = U @ V.T
     AR = A @ R
     return ((AR - B) ** 2).sum(1).mean()
+
+def deepwalk(graph, walk_length = 60, num_walks = 200, dim = 32):
+    # 生成随机游走序列
+    walks = []
+    for _ in range(num_walks):
+        node = random.choice(list(graph.nodes))
+        walk = [node]
+        while len(walk) < walk_length:
+            neighbors = list(graph[node])
+            next_node = neighbors[random.randint(0, len(neighbors) - 1)] if neighbors else node
+            walk.append(next_node)
+            node = next_node
+        walks.append(walk)
+
+    # 使用 gensim 的 Word2Vec 训练嵌入向量
+    sentences = [list(map(str, walk)) for walk in walks]
+    # for walk in walks:
+    #     print(walk)
+    # print(sentences)
+    model = gensim.models.Word2Vec(sentences, vector_size=dim, window=walk_length, min_count=1, sg=1)
+    node2vec = {str(node): model.wv[str(node)] if str(node) in model.wv else None for node in graph.nodes}
+    # for node in graph.nodes:
+        # print(node, model.wv[str(node)])
+    return node2vec
