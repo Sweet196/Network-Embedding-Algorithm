@@ -164,6 +164,17 @@ def reconstruct_full(dim, deg, pr, n, m, fr, to):
 def dG(A, B):
     S = A.T @ B
     U, Sigma, V = torch.svd(S)
+    print(U.shape, Sigma.shape, V.shape)
+    print(Sigma)
     R = U @ V.T
     AR = A @ R
     return ((AR - B) ** 2).sum(1).mean()
+
+
+if __name__ == '__main__':
+    # 生成两个随机矩阵作为示例数据
+    A = torch.randn(10, 5)
+    B = torch.randn(10, 5)
+    # 调用dG函数计算两个矩阵之间的差异
+    difference = dG(A, B)
+    print("Difference between A and B:", difference.item())
