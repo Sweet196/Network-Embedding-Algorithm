@@ -1,0 +1,19 @@
+learn_embeddings_and_train(window_size=5, walk_length=40, num_walks=10)
+Number of nodes: 2708
+Number of edges: 5278
+Number of walks: 27080
+Accuracy: 0.32287822878228783
+
+
+learn_embeddings_and_train(window_size=10, walk_length=80, num_walks=10)
+Number of nodes: 2708
+Number of edges: 5278
+Number of walks: 27080
+Accuracy: 0.2952029520295203
+
+
+learn_embeddings_and_train(window_size=10, walk_length=40, num_walks=80)
+Number of nodes: 2708
+Number of edges: 5278
+Number of walks: 216640
+Accuracy: 0.26014760147601473
