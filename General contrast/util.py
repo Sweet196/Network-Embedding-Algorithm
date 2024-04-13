@@ -6,6 +6,7 @@ from scipy.sparse.csgraph import shortest_path
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
+from torch_geometric.nn import GCNConv
 from torch_geometric.nn import GINConv, GATConv
 
 import gensim
@@ -43,6 +44,21 @@ class MLP(nn.Module):
     def forward(self, input):
         x = self.main(input)
         return x
+
+# Define GCN model
+class GCN(nn.Module):
+    def __init__(self, m):
+        super(GCN, self).__init__()
+        self.conv1 = GCNConv(m+2, 128)  # Input dimension is 2 (x, y coordinates)
+        self.conv2 = GCNConv(128, 2)   # Output dimension is 2 for binary classification
+
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+        x = self.conv1(x, edge_index)
+        x = torch.relu(x)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index)
+        return F.log_softmax(x, dim=1)
 
 
 class GIN(torch.nn.Module):
