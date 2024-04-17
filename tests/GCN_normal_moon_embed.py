@@ -52,7 +52,7 @@ print(data)
 net = GCN(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for epoch in range(10):
+for epoch in range(100):
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     # 将节点选择矩阵与特征矩阵连接在一起
     X_extended = torch.hstack([x, ind]) # 
