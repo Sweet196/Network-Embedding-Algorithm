@@ -12,7 +12,7 @@ with open('./results/accs_GAT.txt', 'r') as file:
     accs_GAT = json.load(file)
 
 # Extract epsilon values and corresponding accuracies
-eps_values = list(accs_GCN.keys())
+eps_values = list(eval(i) for i in accs_GCN.keys())
 accs_values_GCN = list(accs_GCN.values())
 accs_values_GIN = list(accs_GIN.values())
 accs_values_GAT = list(accs_GAT.values())
