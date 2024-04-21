@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as PathEffects
 from scipy.sparse import csr_matrix
 import networkx as nx
-from torch.nn import DataParallel
 
 from scipy.linalg import orthogonal_procrustes
 
@@ -61,30 +60,20 @@ def get_accs(function: str, distance):
     # function = eval(function).to(device)
     # net = function(m).to(device)
         # 根据传入的模型名称实例化模型对象
-    
-    # 如果有多个 GPU 可用，则使用所有可用的 GPU 进行训练
-    if torch.cuda.device_count() > 1:
-        # print("使用的 GPU 数量:", torch.cuda.device_count())
-        # 将模型封装在 DataParallel 中
-        net = DataParallel(eval(function)(m)).to(device)
+    if function == 'GCN':
+        net = GCN(m).to(device)
+    elif function == 'GIN':
+        net = GIN(m).to(device)
+    elif function == 'GAT':
+        net = GAT(m).to(device)
     else:
-        # print("GPU_NUM: 1")
-        net = eval(function)(m).to(device)    
-    
-    # if function == 'GCN':
-    #     net = GCN(m).to(device)
-    # elif function == 'GIN':
-    #     net = GIN(m).to(device)
-    # elif function == 'GAT':
-    #     net = GAT(m).to(device)
-    # else:
-    #     raise ValueError("Unsupported model type:", function)
+        raise ValueError("Unsupported model type:", function)
     
     
     optimizer = optim.Adam(net.parameters(), lr=0.001)
     net.train()
 
-    for epoch in range(3):
+    for epoch in range(100):
         ind = torch.eye(n)[:, torch.randperm(n)[:m]].to(device)
         X_extended = torch.hstack([x_tensor, ind])
         data = Data(x=X_extended, edge_index=edges_tensor)
@@ -110,11 +99,6 @@ import json
 
 # Define epsilon range
 eps_range = [eps for eps in np.arange(0.01, MAX_DISTANCE, 0.03)]
-# 如果有多个 GPU 可用，则使用所有可用的 GPU 进行训练
-if torch.cuda.device_count() > 1:
-    print("使用的 GPU 数量:", torch.cuda.device_count())
-else:
-    print("GPU_NUM: 1")
 
 # Initialize dictionaries to store accuracy results
 accs_GCN = {}
@@ -257,5 +241,3 @@ plt.legend()
 plt.grid(True)
 plt.savefig("./results/eps_blob_res_moon.jpg")
 plt.show()
-
-# %%
