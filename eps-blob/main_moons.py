@@ -17,7 +17,7 @@ from sklearn.manifold import TSNE
 from sklearn.datasets import make_moons  
 
 from util import Net, GIN, GAT, stationary, reconstruct, dG, GCN
-from torch.nn import MSELoss
+from torch.nn import MSELoss, CrossEntropyLoss
 from torch.cuda import is_available as cuda_available
 
 
@@ -69,16 +69,17 @@ def get_accs(function: str, distance):
     else:
         raise ValueError("Unsupported model type:", function)
     
-    
     optimizer = optim.Adam(net.parameters(), lr=0.001)
     net.train()
 
-    for epoch in range(100):
+    criterion = CrossEntropyLoss().to(device)
+    for epoch in range(10):
         ind = torch.eye(n)[:, torch.randperm(n)[:m]].to(device)
         X_extended = torch.hstack([x_tensor, ind])
         data = Data(x=X_extended, edge_index=edges_tensor)
         rec = net(data)
-        loss = dG(x_tensor[train_ind], rec[train_ind]).to(device)
+        # Compute loss with cross entropy
+        loss = criterion(rec[train_ind], y_tensor[train_ind]).to(device)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
