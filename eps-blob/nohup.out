@@ -1,0 +1,9 @@
+/home/jiaheng/anaconda3/envs/liuql_net/lib/python3.8/site-packages/torch/cuda/__init__.py:107: UserWarning: CUDA initialization: Unexpected error from cudaGetDeviceCount(). Did you run some cuda functions before calling NumCudaDevices() that might have already set an error? Error 803: system has unsupported display driver / cuda driver combination (Triggered internally at ../c10/cuda/CUDAFunctions.cpp:109.)
+  return torch._C._cuda_getDeviceCount() > 0
+Train size: 1400
+Test size: 600
+Max value in adjacency matrix: 3.5395762266353827
+Device: cpu
+  0%|          | 0/118 [00:00<?, ?it/s]/home/jiaheng/anaconda3/envs/liuql_net/lib/python3.8/site-packages/torch/cuda/__init__.py:546: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+  1%|          | 1/118 [00:00<00:50,  2.30it/s]  2%|▏         | 2/118 [00:01<01:00,  1.91it/s]  3%|▎         | 3/118 [00:02<01:30,  1.28it/s]  3%|▎         | 4/118 [00:03<02:12,  1.16s/it]  4%|▍         | 5/118 [00:07<03:36,  1.91s/it]  5%|▌         | 6/118 [00:11<05:05,  2.73s/it]  6%|▌         | 7/118 [00:17<06:58,  3.77s/it]  7%|▋         | 8/118 [00:24<08:59,  4.91s/it]  8%|▊         | 9/118 [00:33<11:08,  6.14s/it]  8%|▊         | 10/118 [00:43<13:13,  7.35s/it]  9%|▉         | 11/118 [00:54<15:11,  8.52s/it]
