@@ -25,7 +25,7 @@ np.random.seed(0)
 torch.manual_seed(0)
 
 n = 2000
-m = 500
+m = 0
 # DISTANCE = 0.1
 
 # 导入moon数据集
@@ -98,7 +98,7 @@ from tqdm.auto import tqdm
 import json
 
 # Define epsilon range
-eps_range = [eps for eps in np.arange(0.01, MAX_DISTANCE, 0.03)]
+eps_range = [eps for eps in np.arange(0.01, MAX_DISTANCE, 0.01)]
 
 # Initialize dictionaries to store accuracy results
 accs_GCN = {}
@@ -241,3 +241,4 @@ plt.legend()
 plt.grid(True)
 plt.savefig("./results/eps_blob_res_moon.jpg")
 plt.show()
+# %%
