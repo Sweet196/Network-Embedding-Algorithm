@@ -7,7 +7,7 @@ import networkx as nx
 import torch
 import torch.optim as optim
 from torch_geometric.data import Data
-from sklearn.datasets import make_moons  
+from sklearn.datasets import make_moons, make_blobs
 from torchmetrics import Accuracy
 from tqdm.auto import tqdm
 import json
@@ -17,7 +17,8 @@ torch.manual_seed(0)
 
 n = 2000
 m = 0
-x, y = make_moons(n_samples=n, noise=0.1, random_state=0) 
+x, y = make_blobs(n_samples=2000, random_state=42, n_features=2,centers=8, cluster_std=0.8,
+                  center_box=(-10.0,10.0))
 n_train = int(n * 0.7)
 train_ind = torch.randperm(n)[:n_train]
 test_ind = torch.LongTensor(list(set(np.arange(n)) - set(train_ind.tolist())))
@@ -50,8 +51,8 @@ def get_accs_and_network_analysis(function: str, distance):
     y_tensor = torch.tensor(y, dtype=torch.long).to(device)
     edges_tensor = torch.tensor(edges, dtype=torch.long).t().contiguous().to(device)
     data = Data(x=x_tensor, y=y_tensor, edge_index=edges_tensor)
-
-    net.train()
+    print(data)
+    net.train() 
     for epoch in range(10):
         optimizer.zero_grad()
         out = net(data)
@@ -67,7 +68,7 @@ def get_accs_and_network_analysis(function: str, distance):
 
     return acc, avg_degree, num_components, component_sizes
 
-eps_range = np.arange(0.01, MAX_DISTANCE, 0.01)
+eps_range = np.arange(0.01, MAX_DISTANCE, 0.1)
 results = {}
 
 for eps in tqdm(eps_range):
@@ -108,26 +109,31 @@ epss = []
 res_acc = []
 res_degree = []
 res_num_component = []
-res_component_size = []
+res_component_size1 = []# the max component size
+res_component_size2 = []# the second_large component size
 
 # Extract data from results
 for eps, res in sorted(results.items(), key=lambda x: float(x[0])):  # Ensure the keys are sorted numerically
+    if(len(res['component_sizes'])==1):
+        break
     epss.append(float(eps))  # Convert eps to float for numerical plotting
     res_degree.append(res['average_degree'])
     res_num_component.append(res['num_components'])
     # Assuming res['component_sizes'] is a list, we could plot its average size
-    res_component_size.append(np.mean(res['component_sizes']))  # Example: calculating the mean of component sizes
+    res_component_size1.append(res['component_sizes'][0])  # Example: calculating the mean of component sizes
+    res_component_size2.append(res['component_sizes'][1])  # Example: calculating the mean of component sizes
 
 # Plotting
 plt.plot(epss, res_degree, label='Average Degree')
 plt.plot(epss, res_num_component, label='Number of Components')
-plt.plot(epss, res_component_size, label='Average Component Size')  # Now plotting the average component size
+plt.plot(epss, res_component_size1, label='Largest Component Size')  # Now plotting the average component size
+plt.plot(epss, res_component_size2, label='Second-Largest Component Size')  # Now plotting the average component size
 
 # Setup legend and labels
 plt.legend(loc='upper right')
 plt.xlabel('Epsilon')
 plt.ylabel('Values')
-plt.xticks(np.arange(0, 3.6, 0.2))  # Ensure this range makes sense for your data
+# plt.xticks(np.arange(0, 3.6, 0.2))  # Ensure this range makes sense for your data
 
 # Set grid visibility
 plt.grid(True)

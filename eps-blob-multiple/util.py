@@ -75,7 +75,7 @@ class GIN(torch.nn.Module):
         self.mlp2 = MLP(128, 128)
         self.conv2 = GINConv(self.mlp2)
         self.mlp2.main.apply(init_weights)
-        self.mlp3 = MLP(128, 2)
+        self.mlp3 = MLP(128, 8)
         self.conv3 = GINConv(self.mlp3)
         self.mlp3.main.apply(init_weights)
 
