@@ -50,7 +50,7 @@ class GCN(nn.Module):
     def __init__(self, m):
         super(GCN, self).__init__()
         self.conv1 = GCNConv(m+2, 128)  # Input dimension is 2 (x, y coordinates)
-        self.conv2 = GCNConv(128, 2)   # Output dimension is 2 for binary classification
+        self.conv2 = GCNConv(128, 8)   # Output dimension is 2 for binary classification
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
@@ -100,7 +100,7 @@ class GAT(torch.nn.Module):
         self.conv2 = GATConv(128, 16, 8)
         self.conv2.lin_src.weight.data.normal_(0, 1e-3)
         self.conv2.lin_dst.weight.data.normal_(0, 1e-3)
-        self.conv3 = GATConv(128, 2, 1)
+        self.conv3 = GATConv(128, 8, 1)
         self.conv3.lin_src.weight.data.normal_(0, 1e-3)
         self.conv3.lin_dst.weight.data.normal_(0, 1e-3)
 

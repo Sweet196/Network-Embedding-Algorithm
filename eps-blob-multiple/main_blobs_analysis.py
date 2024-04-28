@@ -43,15 +43,18 @@ def get_accs_and_network_analysis(function: str, distance):
     avg_degree, num_components, component_sizes = analyze_network_structure(edges)
     
     # Example of using GCN
-    from util import GCN
-    net = GCN(m).to(device)
+    from util import GCN, GIN, GAT
+    # net = GCN(m).to(device)
+    # net = GIN(m).to(device)
+    # net = GCN(m).to(device)
+    net = eval(function)(m).to(device)
     optimizer = optim.Adam(net.parameters(), lr=0.001)
 
     x_tensor = torch.tensor(x, dtype=torch.float).to(device)
     y_tensor = torch.tensor(y, dtype=torch.long).to(device)
     edges_tensor = torch.tensor(edges, dtype=torch.long).t().contiguous().to(device)
     data = Data(x=x_tensor, y=y_tensor, edge_index=edges_tensor)
-    print(data)
+    # print(data)
     net.train() 
     for epoch in range(10):
         optimizer.zero_grad()
@@ -63,84 +66,53 @@ def get_accs_and_network_analysis(function: str, distance):
     net.eval()
     with torch.no_grad():
         pred_labels = net(data).argmax(dim=1)
-    accuracy = Accuracy('binary').to(device)
+    accuracy = Accuracy('multiclass', num_classes=8).to(device)
     acc = accuracy(pred_labels[test_ind], y_tensor[test_ind]).item()
 
     return acc, avg_degree, num_components, component_sizes
 
-eps_range = np.arange(0.01, MAX_DISTANCE, 0.1)
-results = {}
 
-for eps in tqdm(eps_range):
-    acc, avg_degree, num_components, component_sizes = get_accs_and_network_analysis('GCN', eps)
-    results[eps] = {
-        'accuracy': acc,
-        'average_degree': avg_degree,
-        'num_components': num_components,
-        'component_sizes': component_sizes
-    }
+if __name__ == "__main__":
+    eps_range = np.arange(0.01, MAX_DISTANCE, 0.1)
+    results, results_GIN, results_GAT = {}, {}, {}
 
-# Save results to a file
-with open('./analysis/network_analysis_results.json', 'w') as file:
-    json.dump(results, file, indent=4)
+    print("GCN:")
+    for eps in tqdm(eps_range):
+        acc, avg_degree, num_components, component_sizes = get_accs_and_network_analysis('GCN', eps)
+        results[eps] = {
+            'accuracy': acc,
+            'average_degree': avg_degree,
+            'num_components': num_components,
+            'component_sizes': component_sizes
+        }
 
-plt.figure(figsize=(10, 5))
-for eps, res in results.items():
-    plt.scatter(eps, res['accuracy'], color='blue')
-plt.xlabel('Epsilon')
-plt.ylabel('Accuracy')
-plt.title('Accuracy vs Epsilon')
-plt.grid(True)
-plt.savefig("./analysis/accuracy_vs_epsilon.png")
-plt.show()
-#%%
-import json
-from matplotlib import pyplot as plt
-import numpy as np
+    print("GIN:")
+    for eps in tqdm(eps_range):
+        acc, avg_degree, num_components, component_sizes = get_accs_and_network_analysis('GIN', eps)
+        results_GIN[eps] = {
+            'accuracy': acc,
+            'average_degree': avg_degree,
+            'num_components': num_components,
+            'component_sizes': component_sizes
+        }
+    
+    print("GAT:")
+    for eps in tqdm(eps_range):
+        acc, avg_degree, num_components, component_sizes = get_accs_and_network_analysis('GAT', eps)
+        results[eps] = {
+            'accuracy': acc,
+            'average_degree': avg_degree,
+            'num_components': num_components,
+            'component_sizes': component_sizes
+        }
+    
+    with open("network_analysis_results_GCN.json", 'w') as f:
+        json.dump(results, f, indent=4)
 
-# Load results from a JSON file
-with open('./analysis/network_analysis_results.json', 'r') as file:
-    results = json.load(file)
+    with open("network_analysis_results_GIN.json", 'w') as f:
+        json.dump(results_GIN, f, indent=4)
+    
+    with open("network_analysis_results_GAT.json", 'w') as f:
+        json.dump(results_GAT, f, indent=4)
 
-plt.figure(figsize=(10, 5))
-
-# Prepare lists for plotting
-epss = []
-res_acc = []
-res_degree = []
-res_num_component = []
-res_component_size1 = []# the max component size
-res_component_size2 = []# the second_large component size
-
-# Extract data from results
-for eps, res in sorted(results.items(), key=lambda x: float(x[0])):  # Ensure the keys are sorted numerically
-    if(len(res['component_sizes'])==1):
-        break
-    epss.append(float(eps))  # Convert eps to float for numerical plotting
-    res_degree.append(res['average_degree'])
-    res_num_component.append(res['num_components'])
-    # Assuming res['component_sizes'] is a list, we could plot its average size
-    res_component_size1.append(res['component_sizes'][0])  # Example: calculating the mean of component sizes
-    res_component_size2.append(res['component_sizes'][1])  # Example: calculating the mean of component sizes
-
-# Plotting
-plt.plot(epss, res_degree, label='Average Degree')
-plt.plot(epss, res_num_component, label='Number of Components')
-plt.plot(epss, res_component_size1, label='Largest Component Size')  # Now plotting the average component size
-plt.plot(epss, res_component_size2, label='Second-Largest Component Size')  # Now plotting the average component size
-
-# Setup legend and labels
-plt.legend(loc='upper right')
-plt.xlabel('Epsilon')
-plt.ylabel('Values')
-# plt.xticks(np.arange(0, 3.6, 0.2))  # Ensure this range makes sense for your data
-
-# Set grid visibility
-plt.grid(True)
-
-# Save the figure
-plt.savefig("./analysis/accuracy_vs_epsilon.png")
-
-# Display the plot
-plt.show()
 # %%
