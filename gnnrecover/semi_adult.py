@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as PathEffects
 from scipy.sparse import csr_matrix
 import networkx as nx
-import random
 
 from scipy.linalg import orthogonal_procrustes
 
@@ -22,7 +21,6 @@ from util import Net, GIN, GAT, stationary, reconstruct, dG
 np.random.seed(0)
 torch.manual_seed(0)
 
-DISTANCE = 0.8
 
 x = []
 with open('./adult.data') as f:
@@ -41,27 +39,20 @@ n_train = int(n * 0.7)
 train_ind = torch.randperm(n)[:n_train]
 test_ind = torch.LongTensor(list(set(np.arange(n)) - set(train_ind.tolist())))
 K = 300
-D = pairwise_distances(x)
-A_binary = np.where(D <= DISTANCE, 1, 0)
-
-# 获得所有的边，二元组格式
-fr, to = np.where(A_binary == 1)
-edges = list(zip(fr, to))
-
-# 从 fr 和 to 中随机抽样以创建边
-random_edges = random.sample(edges, K * n)
-fr = [edge[0] for edge in random_edges]
-to = [edge[1] for edge in random_edges]
-A = csr_matrix((np.ones(len(fr)) / K, (fr, to)), shape=(n, n))
+D = pairwise_distances(x) - 1e9 * np.eye(n)
+fr = np.arange(n).repeat(K).reshape(-1)
+to = np.argsort(D, axis=1)[:, 1:K + 1].reshape(-1)
+A = csr_matrix((np.ones(n * K) / K, (fr, to)))
 
 edge_index = np.vstack([fr, to])
 edge_index = torch.tensor(edge_index, dtype=torch.long)
 X = torch.tensor([[K, n] for i in range(n)], dtype=torch.float)
+print(len(fr), len(to), A.shape)
 
 net = Net()
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for i in range(10):
+for i in range(100):
     # Note 1: In the original formulation, $g$, i.e., the neural network for the scale function, should be used in reconstruct(K, pr, n, m, fr, to), namely, in the definition of $s$. We factorize $s$ and multiply g after we reconstruct the features. This is mathematically equivalent. We do this to avoid memory overflow due to long backpropagation.
     # Note 2: We roughly standardize n for stability by (n - 3000) / 3000. This does not affect the representational power of GNNs by merging them into the network parameters.
     pr = stationary(A)
@@ -86,7 +77,7 @@ loss_proposed = float(dG(torch.FloatTensor(x), rec))
 net = GIN(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for epoch in range(10):
+for epoch in range(100):
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     X_extended = torch.hstack([X, ind])
     data = Data(x=X_extended, edge_index=edge_index)
@@ -104,7 +95,7 @@ loss_GIN = float(dG(torch.FloatTensor(x), rec))
 net = GAT(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for epoch in range(10):
+for epoch in range(100):
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     X_extended = torch.hstack([X, ind])
     data = Data(x=X_extended, edge_index=edge_index)
@@ -182,6 +173,6 @@ fig.subplots_adjust()
 if not os.path.exists('imgs'):
     os.mkdir('imgs')
 
-print("painting...")
 fig.savefig('imgs/semi_adult.png', bbox_inches='tight', dpi=300)
-
+fig.savefig('imgs/semi_adult.pdf', bbox_inches='tight', dpi=300)
+fig.savefig('imgs/semi_adult.svg', bbox_inches='tight', dpi=300)
