@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigs
 from scipy.sparse.csgraph import shortest_path
+from scipy.sparse.csgraph import dijkstra
 
 import torch
 import torch.nn.functional as F
@@ -126,7 +127,8 @@ def reconstruct(K, pr, n, m, fr, to):
     unselected = np.array(list(set(np.arange(n)) - set(selected)))
     s = (K / (pr * n * n)) ** 0.25
     W = csr_matrix((s.repeat(K), (fr, to)))
-    spd = shortest_path(W, indices=selected)
+    # spd = shortest_path(W, indices=selected)
+    spd = dijkstra(W, indices=selected)
     pos_inf = (spd == np.inf)
     spd[pos_inf] = 0
     spd[pos_inf] = spd.max()

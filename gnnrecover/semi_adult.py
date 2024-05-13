@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as PathEffects
 from scipy.sparse import csr_matrix
 import networkx as nx
+import random
 
 from scipy.linalg import orthogonal_procrustes
 
@@ -21,6 +22,7 @@ from util import Net, GIN, GAT, stationary, reconstruct, dG
 np.random.seed(0)
 torch.manual_seed(0)
 
+DISTANCE = 0.8
 
 x = []
 with open('./adult.data') as f:
@@ -39,10 +41,18 @@ n_train = int(n * 0.7)
 train_ind = torch.randperm(n)[:n_train]
 test_ind = torch.LongTensor(list(set(np.arange(n)) - set(train_ind.tolist())))
 K = 300
-D = pairwise_distances(x) - 1e9 * np.eye(n)
-fr = np.arange(n).repeat(K).reshape(-1)
-to = np.argsort(D, axis=1)[:, 1:K + 1].reshape(-1)
-A = csr_matrix((np.ones(n * K) / K, (fr, to)))
+D = pairwise_distances(x)
+A_binary = np.where(D <= DISTANCE, 1, 0)
+
+# 获得所有的边，二元组格式
+fr, to = np.where(A_binary == 1)
+edges = list(zip(fr, to))
+
+# 从 fr 和 to 中随机抽样以创建边
+random_edges = random.sample(edges, K * n)
+fr = [edge[0] for edge in random_edges]
+to = [edge[1] for edge in random_edges]
+A = csr_matrix((np.ones(len(fr)) / K, (fr, to)), shape=(n, n))
 
 edge_index = np.vstack([fr, to])
 edge_index = torch.tensor(edge_index, dtype=torch.long)
@@ -172,5 +182,6 @@ fig.subplots_adjust()
 if not os.path.exists('imgs'):
     os.mkdir('imgs')
 
+print("painting...")
 fig.savefig('imgs/semi_adult.png', bbox_inches='tight', dpi=300)
 
