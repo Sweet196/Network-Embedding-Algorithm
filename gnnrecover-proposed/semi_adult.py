@@ -1,4 +1,5 @@
 import os
+import csv
 import numpy as np
 from sklearn.metrics import pairwise_distances
 import matplotlib.pyplot as plt
@@ -14,24 +15,34 @@ from torch_geometric.data import Data
 
 from sklearn.manifold import TSNE
 
-from util import Net, GIN, GAT, moon, stationary, reconstruct, dG
+from util import Net, GIN, GAT, stationary, reconstruct, dG
 
 
 np.random.seed(0)
 torch.manual_seed(0)
 
-n = 5000
+
+x = []
+with open('./adult.data') as f:
+    reader = csv.reader(f)
+    for r in reader:
+        if len(r) == 15 and int(r[0]) < 90 and 1000 < int(r[10]) and int(r[10]) < 99999:
+            x.append([int(r[0]), np.log10(int(r[10]))])
+
+x = np.array(x)
+mu = np.mean(x, axis=0, keepdims=True)
+std = np.std(x, axis=0, keepdims=True)
+x = (x - mu) / std
+n = len(x)
 m = 500
-x, n = moon(n) #x是一个5000*2的矩阵，对应坐标(x, y)
 n_train = int(n * 0.7)
 train_ind = torch.randperm(n)[:n_train]
 test_ind = torch.LongTensor(list(set(np.arange(n)) - set(train_ind.tolist())))
-K = int(np.sqrt(n) * np.log2(n) / 10)
-D = pairwise_distances(x)
+K = 300
+D = pairwise_distances(x) - 1e9 * np.eye(n)
 fr = np.arange(n).repeat(K).reshape(-1)
 to = np.argsort(D, axis=1)[:, 1:K + 1].reshape(-1)
 A = csr_matrix((np.ones(n * K) / K, (fr, to)))
-print(len(fr), len(to), A.shape)
 
 edge_index = np.vstack([fr, to])
 edge_index = torch.tensor(edge_index, dtype=torch.long)
@@ -40,19 +51,18 @@ X = torch.tensor([[K, n] for i in range(n)], dtype=torch.float)
 net = Net()
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for i in range(100):
+for i in range(10):
     # Note 1: In the original formulation, $g$, i.e., the neural network for the scale function, should be used in reconstruct(K, pr, n, m, fr, to), namely, in the definition of $s$. We factorize $s$ and multiply g after we reconstruct the features. This is mathematically equivalent. We do this to avoid memory overflow due to long backpropagation.
     # Note 2: We roughly standardize n for stability by (n - 3000) / 3000. This does not affect the representational power of GNNs by merging them into the network parameters.
     pr = stationary(A)
     pr = np.maximum(pr, 1e-9)
-    print((K, pr.shape, n, m, len(fr), len(to)))
     rec_orig = reconstruct(K, pr, n, m, fr, to)
     rec_orig = torch.FloatTensor(rec_orig)
     g = net(torch.FloatTensor([(n - 3000) / 3000]))
     rec = rec_orig * (g ** 0.5)
     loss = dG(torch.FloatTensor(x)[train_ind], rec[train_ind])
 
-    # print(n, float(g), float(loss))
+    print(n, float(g), float(loss))
 
     optimizer.zero_grad()
     loss.backward()
@@ -66,7 +76,7 @@ loss_proposed = float(dG(torch.FloatTensor(x), rec))
 net = GIN(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for epoch in range(100):
+for epoch in range(10):
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     X_extended = torch.hstack([X, ind])
     data = Data(x=X_extended, edge_index=edge_index)
@@ -84,7 +94,7 @@ loss_GIN = float(dG(torch.FloatTensor(x), rec))
 net = GAT(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
-for epoch in range(100):
+for epoch in range(10):
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     X_extended = torch.hstack([X, ind])
     data = Data(x=X_extended, edge_index=edge_index)
@@ -124,7 +134,7 @@ G = nx.DiGraph()
 G.add_edges_from([(fr[i], to[i]) for i in range(len(fr))])
 ax = fig.add_subplot(2, 3, 2)
 pos = nx.spring_layout(G, k=0.18, seed=0)
-nx.draw_networkx(G, ax=ax, pos=pos, node_size=0.5, node_color='#005aff', labels={i: '' for i in range(n)}, edge_color='#84919e', width=0.0005, arrowsize=0.1)
+nx.draw_networkx(G, ax=ax, pos=pos, node_size=1, node_color='#005aff', labels={i: '' for i in range(n)}, edge_color='#84919e', width=0.0002, arrowsize=0.1)
 txt = ax.text(0.05, 0.05, 'Input Graph', color='k', fontsize=14, weight='bold', transform=ax.transAxes)
 txt.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
 ax.set_rasterization_zorder(3)
@@ -162,6 +172,5 @@ fig.subplots_adjust()
 if not os.path.exists('imgs'):
     os.mkdir('imgs')
 
-fig.savefig('imgs/semi_moon.png', bbox_inches='tight', dpi=300)
-fig.savefig('imgs/semi_moon.pdf', bbox_inches='tight', dpi=300)
-fig.savefig('imgs/semi_moon.svg', bbox_inches='tight', dpi=300)
+fig.savefig('imgs/semi_adult.png', bbox_inches='tight', dpi=300)
+

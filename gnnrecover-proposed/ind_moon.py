@@ -20,22 +20,18 @@ from util import Net, GIN, GAT, moon, stationary, reconstruct, dG
 np.random.seed(0)
 torch.manual_seed(0)
 
-n = 5000
+n_test = 10000
 m = 500
-x, n = moon(n) #x是一个5000*2的矩阵，对应坐标(x, y)
-n_train = int(n * 0.7)
-train_ind = torch.randperm(n)[:n_train]
-test_ind = torch.LongTensor(list(set(np.arange(n)) - set(train_ind.tolist())))
-K = int(np.sqrt(n) * np.log2(n) / 10)
-D = pairwise_distances(x)
-fr = np.arange(n).repeat(K).reshape(-1)
-to = np.argsort(D, axis=1)[:, 1:K + 1].reshape(-1)
-A = csr_matrix((np.ones(n * K) / K, (fr, to)))
-print(len(fr), len(to), A.shape)
+x_test, n_test = moon(n_test)
+K_test = int(np.sqrt(n_test) * np.log2(n_test) / 10)
+D = pairwise_distances(x_test)
+fr_test = np.arange(n_test).repeat(K_test).reshape(-1)
+to_test = np.argsort(D, axis=1)[:, 1:K_test + 1].reshape(-1)
+A_test = csr_matrix((np.ones(n_test * K_test) / K_test, (fr_test, to_test)))
 
-edge_index = np.vstack([fr, to])
-edge_index = torch.tensor(edge_index, dtype=torch.long)
-X = torch.tensor([[K, n] for i in range(n)], dtype=torch.float)
+edge_index_test = np.vstack([fr_test, to_test])
+edge_index_test = torch.tensor(edge_index_test, dtype=torch.long)
+X_test = torch.tensor([[K_test, n_test] for i in range(n_test)], dtype=torch.float)
 
 net = Net()
 optimizer = optim.Adam(net.parameters(), lr=0.001)
@@ -43,72 +39,111 @@ net.train()
 for i in range(100):
     # Note 1: In the original formulation, $g$, i.e., the neural network for the scale function, should be used in reconstruct(K, pr, n, m, fr, to), namely, in the definition of $s$. We factorize $s$ and multiply g after we reconstruct the features. This is mathematically equivalent. We do this to avoid memory overflow due to long backpropagation.
     # Note 2: We roughly standardize n for stability by (n - 3000) / 3000. This does not affect the representational power of GNNs by merging them into the network parameters.
+    n = np.random.randint(1000, 5001)
+    x, n = moon(n)
+    K = int(np.sqrt(n) * np.log2(n) / 10)
+    D = pairwise_distances(x)
+    fr = np.arange(n).repeat(K).reshape(-1)
+    to = np.argsort(D, axis=1)[:, 1:K + 1].reshape(-1)
+    A = csr_matrix((np.ones(n * K) / K, (fr, to)))
     pr = stationary(A)
     pr = np.maximum(pr, 1e-9)
-    print((K, pr.shape, n, m, len(fr), len(to)))
     rec_orig = reconstruct(K, pr, n, m, fr, to)
     rec_orig = torch.FloatTensor(rec_orig)
     g = net(torch.FloatTensor([(n - 3000) / 3000]))
     rec = rec_orig * (g ** 0.5)
-    loss = dG(torch.FloatTensor(x)[train_ind], rec[train_ind])
+    loss = dG(torch.FloatTensor(x), rec)
 
-    # print(n, float(g), float(loss))
+    print(n, float(g), float(loss))
 
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-R, _ = orthogonal_procrustes(x, rec.detach().numpy())
+
+pr = stationary(A_test)
+pr = np.maximum(pr, 1e-9)
+rec_orig = reconstruct(K_test, pr, n_test, m, fr_test, to_test)
+rec_orig = torch.FloatTensor(rec_orig)
+g = net(torch.FloatTensor([(n_test - 3000) / 3000]))
+rec = rec_orig * (g ** 0.5)
+R, _ = orthogonal_procrustes(x_test, rec.detach().numpy())
 rec_proposed = rec.detach().numpy() @ R.T
-loss_proposed = float(dG(torch.FloatTensor(x), rec))
+loss_proposed = float(dG(torch.FloatTensor(x_test), rec))
 
 
 net = GIN(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
 for epoch in range(100):
+    n = np.random.randint(1000, 5001)
+    x, n = moon(n)
+    K = int(np.sqrt(n) * np.log2(n) / 10)
+    D = pairwise_distances(x)
+    fr = np.arange(n).repeat(K).reshape(-1)
+    to = np.argsort(D, axis=1)[:, 1:K + 1].reshape(-1)
+    edge_index = np.vstack([fr, to])
+    edge_index = torch.tensor(edge_index, dtype=torch.long)
+    X = torch.tensor([[K, n] for i in range(n)], dtype=torch.float)
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     X_extended = torch.hstack([X, ind])
     data = Data(x=X_extended, edge_index=edge_index)
     rec = net(data)
-    loss = dG(torch.FloatTensor(x)[train_ind], rec[train_ind])
+    loss = dG(torch.FloatTensor(x), rec)
     print(float(loss))
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-R, _ = orthogonal_procrustes(x, rec.detach().numpy())
+ind = torch.eye(n_test)[:, torch.randperm(n_test)[:m]]
+X_extended = torch.hstack([X_test, ind])
+data = Data(x=X_extended, edge_index=edge_index_test)
+rec = net(data)
+R, _ = orthogonal_procrustes(x_test, rec.detach().numpy())
 rec_GIN = rec.detach().numpy() @ R.T
-loss_GIN = float(dG(torch.FloatTensor(x), rec))
+loss_GIN = float(dG(torch.FloatTensor(x_test), rec))
 
 net = GAT(m)
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 net.train()
 for epoch in range(100):
+    n = np.random.randint(1000, 5001)
+    x, n = moon(n)
+    K = int(np.sqrt(n) * np.log2(n) / 10)
+    D = pairwise_distances(x)
+    fr = np.arange(n).repeat(K).reshape(-1)
+    to = np.argsort(D, axis=1)[:, 1:K + 1].reshape(-1)
+    edge_index = np.vstack([fr, to])
+    edge_index = torch.tensor(edge_index, dtype=torch.long)
+    X = torch.tensor([[K, n] for i in range(n)], dtype=torch.float)
     ind = torch.eye(n)[:, torch.randperm(n)[:m]]
     X_extended = torch.hstack([X, ind])
     data = Data(x=X_extended, edge_index=edge_index)
     rec = net(data)
-    loss = dG(torch.FloatTensor(x)[train_ind], rec[train_ind])
+    loss = dG(torch.FloatTensor(x), rec)
     print(float(loss))
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-R, _ = orthogonal_procrustes(x, rec.detach().numpy())
+ind = torch.eye(n_test)[:, torch.randperm(n_test)[:m]]
+X_extended = torch.hstack([X_test, ind])
+data = Data(x=X_extended, edge_index=edge_index_test)
+rec = net(data)
+R, _ = orthogonal_procrustes(x_test, rec.detach().numpy())
 rec_GAT = rec.detach().numpy() @ R.T
-loss_GAT = float(dG(torch.FloatTensor(x), rec))
+loss_GAT = float(dG(torch.FloatTensor(x_test), rec))
 
-ind = torch.eye(n)[:, torch.randperm(n)[:m]]
-X_extended = torch.hstack([X, ind])
+ind = torch.eye(n_test)[:, torch.randperm(n_test)[:m]]
+X_extended = torch.hstack([X_test, ind])
 X_embedded = TSNE(n_components=2, random_state=0, init='pca').fit_transform(X_extended.numpy())
-loss_tSNE = float(dG(torch.FloatTensor(x), X_embedded))
+loss_tSNE = float(dG(torch.FloatTensor(x_test), X_embedded))
 
 
-c = x[:, 0].argsort().argsort()
+c = x_test[:, 0].argsort().argsort()
 fig = plt.figure(figsize=(14, 4))
 ax = fig.add_subplot(2, 3, 1)
-ax.scatter(x[:, 0], x[:, 1], c=c, s=10, rasterized=True)
+ax.scatter(x_test[:, 0], x_test[:, 1], c=c, s=10, rasterized=True)
 ax.set_xticks([])
 ax.set_yticks([])
 ax.set_facecolor('#eeeeee')
@@ -121,10 +156,10 @@ visible_ax.imshow(visible)
 visible_ax.axis('off')
 
 G = nx.DiGraph()
-G.add_edges_from([(fr[i], to[i]) for i in range(len(fr))])
+G.add_edges_from([(fr_test[i], to_test[i]) for i in range(len(fr_test))])
 ax = fig.add_subplot(2, 3, 2)
 pos = nx.spring_layout(G, k=0.18, seed=0)
-nx.draw_networkx(G, ax=ax, pos=pos, node_size=0.5, node_color='#005aff', labels={i: '' for i in range(n)}, edge_color='#84919e', width=0.0005, arrowsize=0.1)
+nx.draw_networkx(G, ax=ax, pos=pos, node_size=0.5, node_color='#005aff', labels={i: '' for i in range(n_test)}, edge_color='#84919e', width=0.0005, arrowsize=0.1)
 txt = ax.text(0.05, 0.05, 'Input Graph', color='k', fontsize=14, weight='bold', transform=ax.transAxes)
 txt.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
 ax.set_rasterization_zorder(3)
@@ -162,6 +197,6 @@ fig.subplots_adjust()
 if not os.path.exists('imgs'):
     os.mkdir('imgs')
 
-fig.savefig('imgs/semi_moon.png', bbox_inches='tight', dpi=300)
-fig.savefig('imgs/semi_moon.pdf', bbox_inches='tight', dpi=300)
-fig.savefig('imgs/semi_moon.svg', bbox_inches='tight', dpi=300)
+fig.savefig('imgs/ind_moon.png', bbox_inches='tight', dpi=300)
+fig.savefig('imgs/ind_moon.pdf', bbox_inches='tight', dpi=300)
+fig.savefig('imgs/ind_moon.svg', bbox_inches='tight', dpi=300)
